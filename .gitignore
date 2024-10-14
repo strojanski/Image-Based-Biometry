@@ -1,2 +1,2 @@
-labs/nibs/
-labs/bin/
+labs/nibs/** */
+labs/bin/** */
