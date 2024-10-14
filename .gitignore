@@ -1,2 +1,23 @@
-labs/nibs/** */
-labs/bin/** */
+# Ignore compiled binaries and libraries
+labs/bin/
+labs/nibs/lib/
+labs/nibs/include/
+labs/nibs/man/
+labs/nibs/nbis/
+
+# Ignore system or OS-specific files
+__MACOSX/
+.DS_Store
+
+# Ignore all data folders (optional, if these are large datasets)
+labs1/data/
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+*.so
+
+# Ignore other common editor/IDE artifacts
+*.log
+.vscode/
+.idea/
