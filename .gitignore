@@ -21,3 +21,5 @@ __pycache__/
 *.log
 .vscode/
 .idea/
+
+labs\assignment 1 - fingerprint recognition\data\** *\
