@@ -1,7 +1,9 @@
 from PIL import Image
 import os
 import subprocess as sb
+import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
         
         
 subjects = []
@@ -64,13 +66,15 @@ def get_scores(path):
     
     impostors, genuines = [], []
     imp_names, gen_names = [], []
+    all_original_names = []
+    all_original_scores = []
     
     for f in files:
         sub1 = f.split("_")[0]
         sub2 = f.split("_")[-2]
 
         fp = open(f"{path}/{f}")
-        score = fp.read()
+        score = int(fp.read())
         fp.close()
         
         if sub1 == sub2:
@@ -79,64 +83,97 @@ def get_scores(path):
         else:
             impostors.append(score)
             imp_names.append((sub1, sub2))
-        
-    return (impostors, imp_names), (genuines, gen_names)
+        all_original_names.append(f)
+        all_original_scores.append(score)
+    return (impostors, imp_names), (genuines, gen_names), (all_original_scores, all_original_names)
 
-import matplotlib.pyplot as plt
 
-def plot_bozorth3_comparisons(subject_pairs, matching_points, labels):
+def plot_bozorth3_comparisons(imp_scores, gen_scores, imp_names, gen_names):
     """
     Plot bozorth3 matching points for impostors and genuines on the same plot.
     
     Args:
-    subject_pairs (list): List of subject pair identifiers (e.g., '1_1', '1_2').
-    matching_points (list): List of bozorth3 matching points corresponding to each subject pair.
-    labels (list): List of labels ('genuine' or 'impostor') corresponding to each subject pair.
+    imp_scores (list): List of matching points for impostors.
+    gen_scores (list): List of matching points for genuines.
+    imp_names (list of tuples): List of tuples containing impostor subject pairs.
+    gen_names (list of tuples): List of tuples containing genuine subject pairs.
     """
     
-    # Separate impostors and genuines
-    impostor_pairs = [pair for pair, label in zip(subject_pairs, labels) if label == 'impostor']
-    impostor_points = [point for point, label in zip(matching_points, labels) if label == 'impostor']
-    
-    genuine_pairs = [pair for pair, label in zip(subject_pairs, labels) if label == 'genuine']
-    genuine_points = [point for point, label in zip(matching_points, labels) if label == 'genuine']
-    
-    # Sort impostor and genuine pairs alphabetically
-    sorted_impostor_pairs, sorted_impostor_points = zip(*sorted(zip(impostor_pairs, impostor_points)))
-    sorted_genuine_pairs, sorted_genuine_points = zip(*sorted(zip(genuine_pairs, genuine_points)))
+    # Convert tuples to string representations for x-axis labels
+    imp_labels = ['_'.join(name) for name in imp_names]
+    gen_labels = ['_'.join(name) for name in gen_names]
     
     # Plot impostor scores in red
-    plt.plot(sorted_impostor_pairs, sorted_impostor_points, 'ro-', label='Impostors')
+    plt.plot([i for i in range(len(imp_scores))], imp_scores, 'ro-', label='Impostors')
     
     # Plot genuine scores in blue
-    plt.plot(sorted_genuine_pairs, sorted_genuine_points, 'bo-', label='Genuines')
+    plt.plot([i for i in range(len(imp_labels), len(imp_labels) + len(gen_labels))], gen_scores, 'bo-', label='Genuines')
+    
 
     # Add labels, title, and formatting
-    plt.xlabel('Subject Pair (sorted alphabetically)')
-    plt.ylabel('Number of Matching Points (Bozorth3 Score)')
+    plt.xlabel('Subject Pairs (sorted alphabetically)')
+    plt.ylabel('Number of Matching Points')
     plt.title('Bozorth3 Matching Points: Impostors vs Genuines')
     
-    # Rotate x-axis labels for better readability
-    plt.xticks(rotation=45, ha='right')
+
+    # Combine labels for x-axis
+    all_labels = imp_labels + gen_labels
     
     # Add a grid and legend
     plt.grid(True)
     plt.legend()
 
-    # Adjust layout to prevent overlap
-    plt.tight_layout()
-
     # Show the plot
+    plt.tight_layout()
     plt.show()
 
-# Example data:
-subject_pairs = ['1_1', '1_2', '2_1', '2_2', '3_1', '3_2']  # Replace with your subject pairs
-matching_points = [120, 150, 200, 180, 110, 130]  # Replace with corresponding bozorth3 scores
-labels = ['genuine', 'impostor', 'impostor', 'genuine', 'impostor', 'genuine']  # Labels for impostor or genuine
 
-# Plot the data
-plot_bozorth3_comparisons(subject_pairs, matching_points, labels)
+def get_similarity_matrix(scores, names):
+    names1 = ["_".join(name.split("_")[:2]) for name in names]
+    names2 = ["_".join(name.split("_")[-2:]).split(".")[0] for name in names]
+    
+    ns1 = set(names1)
+    ns2 = set(names2)
+    
+    # TODO sort
+    
+    n_rows = len(set(names1))
+    
+    matrix = []
+    for s1 in ns1:
+        s1_scores = []
+        for s2 in ns2:
+            score = 0
+                
+            for i, (n1, n2) in enumerate(zip(names1, names2)):
+                if n1 == s1 and n2 == s2:
+                    score += scores[i]             
+            s1_scores.append(score)
+        
+        matrix.append(s1_scores)
+    
+    return matrix, ns1, ns2
 
+def plot_similarity_matrix(similarity_matrix, ns1, ns2):
+    """
+    Plot the similarity matrix as a heatmap.
+    
+    Args:
+    similarity_matrix (ndarray): A 2D numpy array representing the similarity matrix.
+    subjects (list): List of unique subjects used for row and column labels.
+    """
+    
+    plt.figure(figsize=(10, 8))
+    plt.imshow(similarity_matrix, cmap='hot', interpolation='nearest')
+    plt.colorbar(label='Bozorth3 Matching Points')
+    
+    # Set the x and y ticks to the subject names
+    plt.xticks(ticks=np.arange(len(ns1)), labels=ns1, rotation=90)
+    plt.yticks(ticks=np.arange(len(ns2)), labels=ns1)
+    
+    plt.title('Similarity Matrix (Bozorth3 Matching Points)')
+    plt.tight_layout()
+    plt.show() 
 
 
 if __name__ == "__main__":
@@ -149,4 +186,47 @@ if __name__ == "__main__":
     except:
         pass
     
-    sub
+    subjects = get_subjects("data/bmp/")
+    
+    
+    skip = True
+    if not skip:
+        # Convert
+        files = os.listdir("./data/bmp/")
+        for f in files:
+            convert_to_grayscale(f"./data/bmp/{f}")
+
+        # Get minutae
+        files = os.listdir("./data/png")
+        for f in files:
+            get_features(f"./data/png/{f}")
+            
+        
+        # Get number of matching points
+        files = os.listdir("./data/feats")
+        files = [f for f in files if ".xyt" in f]
+        print(len(files), (len(files) - 1) ** 2)
+        for i, f1 in enumerate(files):
+            for f2 in files[i:]:
+                if f1 == f2:
+                    continue
+            
+                print(f1, f2)
+                prefix = "./data/feats"
+                
+                run_bozorth3(f"{prefix}/{f1}", f"{prefix}/{f2}")
+
+    # Plot scores
+    impostors, genuine, original = get_scores("data/matches/")
+    
+    imp, imp_s = impostors
+    gen, gen_s = genuine
+    original_scores, original_names = original
+    
+    # plot_bozorth3_comparisons(imp, gen, imp_s, gen_s)
+    
+    
+    subjects = sorted(list(set([int(i[0]) for i in imp_s] + [int(i[0]) for i in imp_s])))
+
+    matrix, ns1, ns2 = get_similarity_matrix(original_scores, original_names)
+    plot_similarity_matrix(matrix, ns1, ns2)
