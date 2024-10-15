@@ -8,5 +8,5 @@ verbose y
 outfile pcasys.out
 
 # RELATIVE PATH FROM PCASYS location to the list of fingerprint images to run in demo
-demo_images_list ../../a1_files/paths_to_your_fingerprints_for_pcasys.txt
+demo_images_list ../../paths_to_your_fingerprints_for_pcasys.txt
 # That file needs to be space delimited with just some fingerprint type hardcoded, it does not matter which (you can just put A for each)

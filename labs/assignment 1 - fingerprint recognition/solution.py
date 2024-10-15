@@ -4,10 +4,8 @@ import subprocess as sb
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.metrics import accuracy_score, f1_score
         
-        
-subjects = []
-
 def convert_to_grayscale(input_path):
     output_path = input_path.replace(".bmp", ".png").replace("bmp", "png")
     with Image.open(input_path) as img:
@@ -26,6 +24,7 @@ def get_features(f):
         result = sb.run(command, check=True)
     except sb.CalledProcessError as e:
         print("Error:", e)
+
 
 def run_bozorth3(inp1, inp2):
     """Run bozorth3 and capture output"""
@@ -51,6 +50,7 @@ def run_bozorth3(inp1, inp2):
         error_output = e.stderr.decode('utf-8')
         print("Bozorth3 Error:\n", error_output)
         return None
+
 
 def get_subjects(path):
     subs = []
@@ -129,38 +129,40 @@ def plot_bozorth3_comparisons(imp_scores, gen_scores, imp_names, gen_names):
 
 
 def get_similarity_matrix(scores, names):
-    names1 = ["_".join(name.split("_")[:2]) for name in names]
-    names2 = ["_".join(name.split("_")[-2:]).split(".")[0] for name in names]
+    # Pre-process names to extract 'first' and 'second' components
+    processed_names = [
+        ("_".join(name.split("_")[:2]), "_".join(name.split("_")[-2:]).split(".")[0])
+        for name in names
+    ]
     
-    ns1 = set(names1)
-    ns2 = set(names2)
+    unique_subs = sorted(set(["_".join(name.split("_")[:2]) for name in names]))
     
-    # TODO sort
+    mat = []
     
-    n_rows = len(set(names1))
+    for sub1 in unique_subs:
+        row = []
+        for sub2 in unique_subs:
+            found = False
+            for (first, second), score in zip(processed_names, scores):
+                if sub1 == first and sub2 == second:
+                    row.append(score)
+                    found = True
+                    break
+            if not found:
+                row.append(0)  
+        mat.append(row)
+        print(sub1)
     
-    matrix = []
-    for s1 in ns1:
-        s1_scores = []
-        for s2 in ns2:
-            score = 0
-                
-            for i, (n1, n2) in enumerate(zip(names1, names2)):
-                if n1 == s1 and n2 == s2:
-                    score += scores[i]             
-            s1_scores.append(score)
-        
-        matrix.append(s1_scores)
-    
-    return matrix, ns1, ns2
+    return mat, unique_subs
 
-def plot_similarity_matrix(similarity_matrix, ns1, ns2):
+
+def plot_similarity_matrix(similarity_matrix, unique_names):
     """
     Plot the similarity matrix as a heatmap.
     
     Args:
     similarity_matrix (ndarray): A 2D numpy array representing the similarity matrix.
-    subjects (list): List of unique subjects used for row and column labels.
+    ns1, ns2 (list): List of names used for row column labels.
     """
     
     plt.figure(figsize=(10, 8))
@@ -168,13 +170,85 @@ def plot_similarity_matrix(similarity_matrix, ns1, ns2):
     plt.colorbar(label='Bozorth3 Matching Points')
     
     # Set the x and y ticks to the subject names
-    plt.xticks(ticks=np.arange(len(ns1)), labels=ns1, rotation=90)
-    plt.yticks(ticks=np.arange(len(ns2)), labels=ns1)
+    plt.xticks(ticks=np.arange(len(unique_names)), labels=unique_names, rotation=90, fontsize=8)
+    plt.yticks(ticks=np.arange(len(unique_names)), labels=unique_names, fontsize=8)
     
     plt.title('Similarity Matrix (Bozorth3 Matching Points)')
     plt.tight_layout()
     plt.show() 
 
+
+def get_and_plot_nfiq_scores(path="data/png"):
+    subs = []
+    scores = []
+    
+    for fprint in os.listdir(path):
+        subs.append(fprint)
+        
+        score = sb.run(f"nfiq {path}/{fprint}", stdout=sb.PIPE)
+        scores.append(int(score.stdout.decode("utf-8")))
+        
+    print(scores)
+    plt.plot(scores, label="nfiq fingerprint quality")
+    plt.xlabel("Fingerprint ID")
+    plt.ylabel("Quality (1 = best, 5 = worst)")
+    plt.ylim(1, 5)
+    plt.legend()
+    print(len(scores))
+    plt.show()
+
+
+def get_threshold():
+    return 50 # Based off the chart
+
+def get_thresholding_score(threshold, scores, names):
+    truths, preds = [], []
+    for score, sample in zip(scores, names):
+        name1 = "_".join(sample.split("_")[:2])
+        name2 = "_".join(sample.split("_")[-2:]).split(".")[0]
+        
+        if name1 == name2:
+            continue
+
+        # Same subject
+        if name1.split("_")[0] == name2.split("_")[0]:
+            truths.append(1) # True
+        else:
+            truths.append(0)
+            
+        preds.append(score > threshold)
+        
+    acc = accuracy_score(truths, preds)
+    f1 = f1_score(truths, preds, average="macro")
+    
+    n_matches = 0
+    for p, t in zip(preds, truths):
+        if p == t:
+            n_matches += 1
+    # print("Acc:", n_matches / len(preds))
+    
+    return acc, f1
+        
+        
+def get_print_group(path, group_dict: dict) -> dict:
+    
+    group = sb.run("pcasys pcasys.prs", stdout=sb.PIPE)
+    
+    return
+        
+def get_fingerprint_groups(scores, comparison_sample_names, path="data/png"):
+    
+    groups = {
+        "Arch": [],
+        "Left Loop": [],
+        "Right Loop": [],
+        "Scar": [],
+        "Tented Arch": [],
+        "Whorl": []
+    }
+
+    for f in os.listdir(path):
+        groups = get_print_group(f"{path}/{f}", groups)
 
 if __name__ == "__main__":
     try:
@@ -216,17 +290,54 @@ if __name__ == "__main__":
                 
                 run_bozorth3(f"{prefix}/{f1}", f"{prefix}/{f2}")
 
-    # Plot scores
-    impostors, genuine, original = get_scores("data/matches/")
-    
-    imp, imp_s = impostors
-    gen, gen_s = genuine
-    original_scores, original_names = original
-    
-    # plot_bozorth3_comparisons(imp, gen, imp_s, gen_s)
-    
-    
-    subjects = sorted(list(set([int(i[0]) for i in imp_s] + [int(i[0]) for i in imp_s])))
 
-    matrix, ns1, ns2 = get_similarity_matrix(original_scores, original_names)
-    plot_similarity_matrix(matrix, ns1, ns2)
+        # Plot scores
+        impostors, genuine, original = get_scores("data/matches/")
+        
+        imp, imp_s = impostors
+        gen, gen_s = genuine
+        original_scores, original_names = original
+        
+        plot_bozorth3_comparisons(imp, gen, imp_s, gen_s)
+        
+        
+        
+        # Plot similarity matrix
+        subjects = sorted(list(set([int(i[0]) for i in imp_s] + [int(i[0]) for i in imp_s])))
+
+        matrix, unique_names = get_similarity_matrix(original_scores, original_names)
+        plot_similarity_matrix(matrix, unique_names)
+
+        get_and_plot_nfiq_scores()
+        
+        
+        
+        # Determine best threshold + classification
+        impostors, genuine, original = get_scores("data/matches/")
+        
+        imp, imp_s = impostors
+        gen, gen_s = genuine
+        original_scores, original_names = original
+        
+        thresh = get_threshold()
+        
+        max_acc, max_f1, best_thresh = 0, 0, 0
+        thresholds = np.arange(45, 55, .1)
+        for thresh in thresholds:
+            print(thresh)
+            acc, f1 = get_thresholding_score(thresh, original_scores, original_names)
+            if acc > max_acc and f1 > max_f1:
+                max_acc = acc
+                max_f1 = f1
+                best_thresh = thresh
+            print()
+            
+        print("Best thresh: ", thresh)
+        print("Best acc: ", max_acc)
+        print("Best f1: ", max_f1)
+        
+        
+    impostors, genuine, original = get_scores("data/matches/")
+        
+    original_scores, original_names = original
+    groups = get_fingerprint_groups()
