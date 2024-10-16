@@ -337,34 +337,34 @@ if __name__ == "__main__":
         
         
         
-    # Determine best threshold + classification
-    impostors, genuine, original = get_scores("data/matches/")
-    
-    imp, imp_s = impostors
-    gen, gen_s = genuine
-    original_scores, original_names = original
-    
-    thresh = get_threshold()
-    
-    max_acc, max_f1, best_thresh = 0, 0, 0
-    thresholds = np.arange(45, 100, 1)
-    for thresh in thresholds:
-        acc, f1 = get_thresholding_score(thresh, original_scores, original_names)
-        if acc > max_acc and f1 > max_f1:
-            print(f1, max_f1)
-            max_acc = acc
-            max_f1 = f1
-            best_thresh = thresh
-        print(thresh, acc, f1)
-        print()
+        # Determine best threshold + classification
+        impostors, genuine, original = get_scores("data/matches/")
         
-    print("Best thresh: ", best_thresh)
-    print("Best acc: ", max_acc)
-    print("Best f1: ", max_f1)
+        imp, imp_s = impostors
+        gen, gen_s = genuine
+        original_scores, original_names = original
+        
+        thresh = get_threshold()
+        
+        max_acc, max_f1, best_thresh = 0, 0, 0
+        thresholds = np.arange(45, 100, 1)
+        for thresh in thresholds:
+            acc, f1 = get_thresholding_score(thresh, original_scores, original_names)
+            if acc > max_acc and f1 > max_f1:
+                print(f1, max_f1)
+                max_acc = acc
+                max_f1 = f1
+                best_thresh = thresh
+            print(thresh, acc, f1)
+            print()
+            
+        print("Best thresh: ", best_thresh)
+        print("Best acc: ", max_acc)
+        print("Best f1: ", max_f1)
         
 
         # Convert to wsq
-        # png_to_wsq("data/png")
+        png_to_wsq("data/png")
 
         # write_wsq_for_pcasys("data/png", "wsq")
             
