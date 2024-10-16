@@ -256,26 +256,62 @@ def write_wsq_for_pcasys(path, file_type):
                 fp.write(f"{path}/{f} A\n")
                 
         
-def get_print_group(path, group_dict: dict) -> dict:
-
-        
+def get_print_group(path) -> str:
+    outfile = open("pcasys_final.out", "r")
+    group = ""
+    filename = path.split("/")[-1]
+    for line in outfile:
+        if filename in line.split(" ")[0]:
+            # print(line.split("_")[0])
+            group = line.split(" ")[5].replace(",", "")
     
-    return
+    return group
+    
         
-def get_fingerprint_groups(scores, comparison_sample_names, path="data/png"):
+def get_fingerprint_groups(path="data/png/"):
     
     groups = {
-        "Arch": [],
-        "Left Loop": [],
-        "Right Loop": [],
-        "Scar": [],
-        "Tented Arch": [],
-        "Whorl": []
+        "A": [],
+        "L": [],
+        "R": [],
+        "S": [],
+        "T": [],
+        "W": []
     }
 
     for f in os.listdir(path):
-        groups = get_print_group(f"{path}/{f}", groups)
+        if not f.endswith(".wsq"):
+            continue
+        group = get_print_group(f"{path}/{f}")
+        groups[group].append(f)
 
+    return groups
+
+def get_group_thresholding_score(threshold, scores, names1, names2):
+    truths, preds = [], []
+    for score, name1, name2 in zip(scores, names1, names2):
+        
+        if name1 == name2:
+            continue
+
+        # Same subject
+        if name1.split("_")[0] == name2.split("_")[0]:
+            truths.append(1) # True
+        else:
+            truths.append(0)
+            
+        preds.append(score > threshold)
+        
+    acc = accuracy_score(truths, preds)
+    f1 = f1_score(truths, preds, average="macro")
+    
+    n_matches = 0
+    for p, t in zip(preds, truths):
+        if p == t:
+            n_matches += 1
+    # print("Acc:", n_matches / len(preds))
+    
+    return acc, f1
 if __name__ == "__main__":
     try:
         os.mkdir("data")
@@ -366,11 +402,82 @@ if __name__ == "__main__":
         # Convert to wsq
         png_to_wsq("data/png")
 
-        # write_wsq_for_pcasys("data/png", "wsq")
+        write_wsq_for_pcasys("data/png", "wsq")
             
-        # impostors, genuine, original = get_scores("data/matches/")
+            
+                
+    # Get groups
+    groups = get_fingerprint_groups()
         
+    # Get scores
+    impostors, genuine, original = get_scores("data/matches/")
+    original_scores, original_names = original
+    
+    final_group_scores = {
+        "A": [],
+        "L": [],
+        "R": [],
+        "S": [],
+        "T": [],
+        "W": []
+    }
+        
+    best_group_scores = []
+    thresholds = np.arange(20, 60, 1)
+    
+    for k, v in groups.items():
+        print(k, len(v))
+    
+    # Do group thresholding
+    for group, group_names in groups.items(): # List of unique names.wsq
+        if len(group_names) == 0:
+            continue
+        original_names_first_name = ["_".join(sample.split("_")[:2]).split(".")[0] for sample in original_names]
+        original_names_second_name = ["_".join(sample.split("_")[-2:]).split(".")[0] for sample in original_names]
+        group_scores, corr_names1, corr_names2 = [], [], []
+        
+        g_names = [n.split(".")[0] for n in group_names]
+        
+        # Determine group scores
+        for n1 in g_names:
+            for n2 in g_names:
+                if n1 == n2:
+                    continue
+                
+                
+                for i, (o1, o2) in enumerate(zip(original_names_first_name, original_names_second_name)):
+                    if n1 == o1 and n2 == o2:
+                        group_scores.append(original_scores[i])
+                        corr_names1.append(n1)
+                        corr_names2.append(n2)
             
+        # print(group, group_scores, corr_names1, corr_names2)  
+        # exit()  
+        # Determine best threshold + classification
+        max_acc, max_f1, best_thresh = 0, 0, 0
+        for thresh in thresholds:
+            acc, f1 = get_group_thresholding_score(thresh, group_scores, corr_names1, corr_names2)
             
-        # original_scores, original_names = original
-        # groups = get_fingerprint_groups()
+            if acc > max_acc and f1 > max_f1:
+                print(f1, max_f1)
+                max_acc = acc
+                max_f1 = f1
+                best_thresh = thresh
+            print(thresh, acc, f1)
+            print()
+            
+            final_group_scores[group].append((thresh, acc, f1))
+            
+        
+        print("Group:", group)
+        print("Best thresh: ", best_thresh)
+        print("Best acc: ", max_acc)
+        print("Best f1: ", max_f1)
+        best_group_scores.append((group, best_thresh, max_acc, max_f1))
+    
+    print(best_group_scores)
+    
+    group_accs = [i[2] for i in best_group_scores]
+    group_f1s = [i[3] for i in best_group_scores]
+    
+    print(np.mean(group_accs), np.mean(group_f1s))
