@@ -111,9 +111,9 @@ def plot_bozorth3_comparisons(imp_scores, gen_scores, imp_names, gen_names):
     
 
     # Add labels, title, and formatting
-    plt.xlabel('Subject Pairs (sorted alphabetically)')
-    plt.ylabel('Number of Matching Points')
-    plt.title('Bozorth3 Matching Points: Impostors vs Genuines')
+    plt.xlabel('Subject Pairs (sorted alphabetically)', fontsize=25)
+    plt.ylabel('Number of Matching Points', fontsize=25)
+    plt.title('Bozorth3 Matching Points: Impostors vs Genuines', fontsize=40)
     
 
     # Combine labels for x-axis
@@ -121,7 +121,7 @@ def plot_bozorth3_comparisons(imp_scores, gen_scores, imp_names, gen_names):
     
     # Add a grid and legend
     plt.grid(True)
-    plt.legend()
+    plt.legend(fontsize=25)
 
     # Show the plot
     plt.tight_layout()
@@ -169,11 +169,12 @@ def plot_similarity_matrix(similarity_matrix, unique_names):
     plt.imshow(similarity_matrix, cmap='hot', interpolation='nearest')
     plt.colorbar(label='Bozorth3 Matching Points')
     
-    # Set the x and y ticks to the subject names
-    plt.xticks(ticks=np.arange(len(unique_names)), labels=unique_names, rotation=90, fontsize=8)
-    plt.yticks(ticks=np.arange(len(unique_names)), labels=unique_names, fontsize=8)
+    skipped_names = [name if i % 3 == 0 else "" for i, name in enumerate(unique_names)]
     
-    plt.title('Similarity Matrix (Bozorth3 Matching Points)')
+    # Set the x and y ticks to the subject names
+    plt.xticks(ticks=np.arange(len(unique_names)), labels=skipped_names, rotation=90, fontsize=8)
+    plt.yticks(ticks=np.arange(len(unique_names)), labels=skipped_names, fontsize=8)
+    plt.title('Similarity Matrix (Bozorth3 Matching Points)', fontsize=35)
     plt.tight_layout()
     plt.show() 
 
@@ -316,17 +317,16 @@ if __name__ == "__main__":
                 run_bozorth3(f"{prefix}/{f1}", f"{prefix}/{f2}")
 
 
+    
         # Plot scores
         impostors, genuine, original = get_scores("data/matches/")
-        
         imp, imp_s = impostors
         gen, gen_s = genuine
         original_scores, original_names = original
         
         plot_bozorth3_comparisons(imp, gen, imp_s, gen_s)
-        
-        
-        
+            
+            
         # Plot similarity matrix
         subjects = sorted(list(set([int(i[0]) for i in imp_s] + [int(i[0]) for i in imp_s])))
 
@@ -337,39 +337,40 @@ if __name__ == "__main__":
         
         
         
-        # Determine best threshold + classification
-        impostors, genuine, original = get_scores("data/matches/")
+    # Determine best threshold + classification
+    impostors, genuine, original = get_scores("data/matches/")
+    
+    imp, imp_s = impostors
+    gen, gen_s = genuine
+    original_scores, original_names = original
+    
+    thresh = get_threshold()
+    
+    max_acc, max_f1, best_thresh = 0, 0, 0
+    thresholds = np.arange(45, 100, 1)
+    for thresh in thresholds:
+        acc, f1 = get_thresholding_score(thresh, original_scores, original_names)
+        if acc > max_acc and f1 > max_f1:
+            print(f1, max_f1)
+            max_acc = acc
+            max_f1 = f1
+            best_thresh = thresh
+        print(thresh, acc, f1)
+        print()
         
-        imp, imp_s = impostors
-        gen, gen_s = genuine
-        original_scores, original_names = original
-        
-        thresh = get_threshold()
-        
-        max_acc, max_f1, best_thresh = 0, 0, 0
-        thresholds = np.arange(45, 55, .1)
-        for thresh in thresholds:
-            print(thresh)
-            acc, f1 = get_thresholding_score(thresh, original_scores, original_names)
-            if acc > max_acc and f1 > max_f1:
-                max_acc = acc
-                max_f1 = f1
-                best_thresh = thresh
-            print()
-            
-        print("Best thresh: ", thresh)
-        print("Best acc: ", max_acc)
-        print("Best f1: ", max_f1)
+    print("Best thresh: ", best_thresh)
+    print("Best acc: ", max_acc)
+    print("Best f1: ", max_f1)
         
 
         # Convert to wsq
-        png_to_wsq("data/png")
+        # png_to_wsq("data/png")
 
-    write_wsq_for_pcasys("data/png", "wsq")
+        # write_wsq_for_pcasys("data/png", "wsq")
+            
+        # impostors, genuine, original = get_scores("data/matches/")
         
-    impostors, genuine, original = get_scores("data/matches/")
-    
-        
-        
-    # original_scores, original_names = original
-    # groups = get_fingerprint_groups()
+            
+            
+        # original_scores, original_names = original
+        # groups = get_fingerprint_groups()
