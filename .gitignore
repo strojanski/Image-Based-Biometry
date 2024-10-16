@@ -4,6 +4,7 @@ assignments/nibs/lib/
 assignments/nibs/include/
 assignments/nibs/man/
 assignments/nibs/nbis/
+assignments/nibs/** */
 
 # Ignore system or OS-specific files
 __MACOSX/
