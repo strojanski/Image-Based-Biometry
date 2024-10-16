@@ -9,20 +9,22 @@ import os
 #   In cases like that transform images to PNG first.
 #   One way of solving this is using magick: "magick some_img.tif some_img.png", before running this script.
 
-BINARY_PATH = "mindtct"     # If your PATH is set correctly, you can leave it as is, regardless of the operating system.
-CONTRAST_ENHANCEMENT = True # Set flag for optional contrast enhancement of the image
+BINARY_PATH = "mindtct"  # If your PATH is set correctly, you can leave it as is, regardless of the operating system.
+CONTRAST_ENHANCEMENT = True  # Set flag for optional contrast enhancement of the image
 DEFAULT_OUT_DIR = "out"
 
 # Update to handle positional arguments
-default_image_path = 'example.png'
+default_image_path = "example.png"
 if len(sys.argv) > 1:
-    image_path = sys.argv[1] 
+    image_path = sys.argv[1]
 else:
     print("No file was given, defaulting to:", default_image_path)
     image_path = default_image_path
 
 if not os.path.exists(image_path):
-    raise FileNotFoundError(f"Fatal. No file was given or the file '{image_path}' does not exist.")
+    raise FileNotFoundError(
+        f"Fatal. No file was given or the file '{image_path}' does not exist."
+    )
 
 base_path = os.path.splitext(image_path)[0]
 base_name = os.path.basename(base_path)
@@ -34,17 +36,18 @@ os.makedirs(out_dir, exist_ok=True) if out_dir else None
 
 def read_minutiae(result_location):
     # Function to parse ".min" file
-    result_location = result_location + '.min'
+    result_location = result_location + ".min"
 
     if not os.path.isfile(result_location):
-        raise FileNotFoundError(f"Fatal. File '{result_location}' does not exist, mindtct probably failed to compute minutiae.")
+        raise FileNotFoundError(
+            f"Fatal. File '{result_location}' does not exist, mindtct probably failed to compute minutiae."
+        )
 
     with open(result_location, "r") as handle:
         content = handle.readlines()
 
     minutiae_list = []
     for i, line in enumerate(content):
-       
         # Skip header
         if i < 4:
             continue
@@ -62,7 +65,6 @@ def read_minutiae(result_location):
 
         # Angle starts at the top (0 degrees) then increases clockwise
         angle_degrees = (angle_encoded / 32) * 360
-
 
         # Quality is a float in range [0, 1]
         quality = float(results[3]) * 100
@@ -103,20 +105,23 @@ def visualize_minutiae(image, minutiae_list, min_quality=0, show_type=False):
             elif type == 2:  # Bifurcaton
                 color = red
         else:
-             color = red
+            color = red
 
         cv2.circle(image, (x, y), point_radius, color, -1, lineType=cv2.LINE_AA)
-        cv2.line(image, (x, y), (x_new, y_new), color, line_thickness, lineType=cv2.LINE_AA)
+        cv2.line(
+            image, (x, y), (x_new, y_new), color, line_thickness, lineType=cv2.LINE_AA
+        )
     return image
 
 
 if __name__ == "__main__":
-
     enhance_flag = "-b" if CONTRAST_ENHANCEMENT else ""
     minutiae_paths = os.path.join(out_dir, base_name)
-    
+
     # Run binary MINDTCT
-    subprocess.call(" ".join([BINARY_PATH, enhance_flag, image_path, minutiae_paths]), shell=True)
+    subprocess.call(
+        " ".join([BINARY_PATH, enhance_flag, image_path, minutiae_paths]), shell=True
+    )
     minutiae_list = read_minutiae(minutiae_paths)
 
     # Vizualize
@@ -124,8 +129,6 @@ if __name__ == "__main__":
     image = visualize_minutiae(image, minutiae_list, min_quality=0, show_type=True)
 
     # Store the image and display
-    cv2.imwrite(os.path.join(base_path + '_visualized.png'), image)
+    cv2.imwrite(os.path.join(base_path + "_visualized.png"), image)
     cv2.imshow("image", image)
     cv2.waitKey(0)
-
-
