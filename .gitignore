@@ -1,16 +1,16 @@
 # Ignore compiled binaries and libraries
-labs/bin/
-labs/nibs/lib/
-labs/nibs/include/
-labs/nibs/man/
-labs/nibs/nbis/
+assignments/bin/
+assignments/nibs/lib/
+assignments/nibs/include/
+assignments/nibs/man/
+assignments/nibs/nbis/
 
 # Ignore system or OS-specific files
 __MACOSX/
 .DS_Store
 
 # Ignore all data folders (optional, if these are large datasets)
-labs1/data/
+assignments/01_fingerprint_recognition/data/
 
 # Ignore Python cache files
 __pycache__/
@@ -22,4 +22,3 @@ __pycache__/
 .vscode/
 .idea/
 
-labs\assignment 1 - fingerprint recognition\data\** *\
