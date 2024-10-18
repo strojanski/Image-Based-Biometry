@@ -7,10 +7,12 @@ assignments/nibs/nbis/
 assignments/nibs/** */
 assignments/nibs/Rel_5.0.0
 assignments/nbis/
+*.zip
+
+
 # Ignore system or OS-specific files
 __MACOSX/
 .DS_Store
-
 # Ignore all data folders (optional, if these are large datasets)
 assignments/01_fingerprint_recognition/data/
 
