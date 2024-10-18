@@ -6,6 +6,7 @@ assignments/nibs/man/
 assignments/nibs/nbis/
 assignments/nibs/** */
 assignments/nibs/Rel_5.0.0
+assignments/nbis/
 # Ignore system or OS-specific files
 __MACOSX/
 .DS_Store

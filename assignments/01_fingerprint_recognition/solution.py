@@ -8,6 +8,19 @@ from sklearn.metrics import accuracy_score, f1_score
 
 
 def convert_to_grayscale(input_path):
+    """
+    Convert a given .bmp fingerprint image to 8-bit grayscale and save it as .png
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the .bmp fingerprint image
+
+    Returns
+    -------
+    output_path : str
+        Path to the converted .png image
+    """
     output_path = input_path.replace(".bmp", ".png").replace("bmp", "png")
     with Image.open(input_path) as img:
         # Convert the image to 8-bit grayscale ('L' mode in Pillow)
@@ -17,6 +30,24 @@ def convert_to_grayscale(input_path):
 
 
 def get_features(f):
+    """
+    Extract minutiae features from a given fingerprint image file.
+
+    Parameters
+    ----------
+    f : str
+        Path to the fingerprint image file
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    This function assumes that the ``mindtct`` executable is in the system's PATH.
+    If the given file is not a .png file, the function will return without doing
+    anything.
+    """
     output_file = f.replace(".png", "")
     output_file = f.replace("png", "feats")
     command = ["mindtct", f, output_file]
@@ -31,7 +62,27 @@ def get_features(f):
 
 
 def run_bozorth3(inp1, inp2):
-    """Run bozorth3 and capture output"""
+    """
+    Run the Bozorth3 algorithm to compare two fingerprint templates.
+
+    Parameters
+    ----------
+    inp1 : str
+        Path to the first fingerprint template file in .xyt format
+    inp2 : str
+        Path to the second fingerprint template file in .xyt format
+
+    Returns
+    -------
+    str
+        The output of the Bozorth3 comparison between the two fingerprint templates
+
+    Notes
+    -----
+    This function assumes that the ``bozorth3`` executable is in the system's PATH.
+    If the given files are not in .xyt format, the function will return without doing anything.
+    Any error messages encountered during the process will be printed.
+    """
     if not inp1.endswith(".xyt") or not inp2.endswith(".xyt"):
         return
     try:
@@ -67,6 +118,27 @@ def get_subjects(path):
 
 
 def get_scores(path):
+    """
+    Read the scores from a folder containing files with names like "subject1_subject2.txt"
+    where the content of the file is the score of the comparison between subject1 and subject2.
+
+    Parameters
+    ----------
+    path : str
+        Path to the folder containing the score files
+
+    Returns
+    -------
+    Three tuples, each containing a list of scores and a list of names.
+
+    The first tuple contains the impostor scores and the names of the subjects that were compared.
+    The second tuple contains the genuine scores and the names of the subjects that were compared.
+    The third tuple contains all the scores and the names of the subjects that were compared.
+
+    Notes
+    -----
+    Any files in the given folder that do not have a .txt extension are ignored.
+    """
     files = os.listdir(path)
 
     impostors, genuines = [], []
@@ -143,7 +215,16 @@ def plot_bozorth3_comparisons(imp_scores, gen_scores, imp_names, gen_names):
 
 
 def get_similarity_matrix(scores, names):
-    # Pre-process names to extract 'first' and 'second' components
+    """
+    Construct a similarity matrix given a list of matching scores and their corresponding names.
+
+    Args:
+    scores (list): List of matching scores.
+    names (list): List of names corresponding to matching scores.
+
+    Returns:
+    A tuple containing the similarity matrix and a list of unique subject IDs.
+    """
     processed_names = [
         ("_".join(name.split("_")[:2]), "_".join(name.split("_")[-2:]).split(".")[0])
         for name in names
@@ -214,6 +295,15 @@ def plot_similarity_matrix(similarity_matrix, unique_names):
 
 
 def get_and_plot_nfiq_scores(path="data/png"):
+    """
+    Retrieve the NFIQ scores for fingerprint images in the specified path and plot them.
+
+    Parameters:
+    path (str): The path to the directory containing the fingerprint images.
+
+    Returns:
+    None
+    """
     subs = []
     scores = []
 
@@ -225,21 +315,30 @@ def get_and_plot_nfiq_scores(path="data/png"):
         score = sb.run(f"nfiq {path}/{fprint}", stdout=sb.PIPE)
         scores.append(int(score.stdout.decode("utf-8")))
 
-    print(scores)
-    plt.plot(scores, label="nfiq fingerprint quality")
-    plt.xlabel("Fingerprint ID")
-    plt.ylabel("Quality (1 = best, 5 = worst)")
-    plt.ylim(1, 5)
-    plt.legend()
-    print(len(scores))
+    # Replace this plot with histogram
+    plt.figure(figsize=(10, 8))
+    # Create seaborn distribution plot
+    sns.set(style="whitegrid")
+    sns.histplot(scores, kde=True)    
+    plt.xlabel("Quality", fontsize=30)
+    plt.ylabel("# of Images", fontsize=30)
+    plt.title("Fingerprint Quality", fontsize=40)
     plt.show()
 
 
-def get_threshold():
-    return 50  # Based off the chart
-
-
 def get_thresholding_score(threshold, scores, names):
+    """
+    Compute the accuracy and F1 score given a matching threshold.
+
+    Parameters:
+    threshold (int): The score threshold above which two fingerprints are considered a match.
+    scores (list): A list of matching scores.
+    names (list): A list of names for the fingerprints.
+
+    Returns:
+    tuple: A tuple containing the accuracy and F1 score.
+    """
+    
     truths, preds = [], []
     for score, sample in zip(scores, names):
         name1 = "_".join(sample.split("_")[:2])
@@ -260,21 +359,21 @@ def get_thresholding_score(threshold, scores, names):
     acc = accuracy_score(truths, preds)
     f1 = f1_score(truths, preds, average="macro")
 
-    n_matches = 0
-    for p, t in zip(preds, truths):
-        if p == t:
-            n_matches += 1
-    # print("Acc:", n_matches / len(preds))
-
     return acc, f1
 
 
-import os
-import subprocess as sb
-from PIL import Image
-
-
 def png_to_wsq(path="data/png"):
+    """
+    Convert PNG fingerprint images to WSQ format using a shell script.
+
+    Parameters:
+    path (str): The directory path containing PNG fingerprint images. Default is "data/png".
+
+    Notes:
+    This function assumes the presence of a shell script "png2wsq_example.sh" which handles
+    the conversion from PNG to WSQ format. The script is executed for each PNG file found
+    in the specified directory. The function does not return any value.
+    """
     files = os.listdir(path)
 
     for f in files:
@@ -288,6 +387,16 @@ def png_to_wsq(path="data/png"):
 
 
 def write_wsq_for_pcasys(path, file_type):
+    """
+    Write WSQ file paths for fingerprint images in the specified directory to a text file.
+    
+    Parameters:
+    path (str): The directory path containing fingerprint images.
+    file_type (str): The file extension type to filter the files to process.
+    
+    Returns:
+    None
+    """
     for f in os.listdir(path):
         if f.endswith(file_type):
             with open("paths_to_your_fingerprints_for_pcasys.txt", "a") as fp:
@@ -295,18 +404,35 @@ def write_wsq_for_pcasys(path, file_type):
 
 
 def get_print_group(path) -> str:
+    """
+    Retrieves the group of the fingerprint image from the pcasys final output file.
+
+    Parameters:
+    path (str): The path to the fingerprint image.
+
+    Returns:
+    str: The group of the fingerprint image.
+    """
     outfile = open("pcasys_final.out", "r")
     group = ""
     filename = path.split("/")[-1]
     for line in outfile:
         if filename in line.split(" ")[0]:
-            # print(line.split("_")[0])
             group = line.split(" ")[5].replace(",", "")
 
     return group
 
 
 def get_fingerprint_groups(path="data/png/"):
+    """
+    Retrieves a dictionary of fingerprint groups from the pcasys final output file.
+
+    Parameters:
+    path (str): The directory path containing fingerprint images. Default is "data/png/".
+
+    Returns:
+    dict: A dictionary with keys representing the fingerprint groups and values containing lists of filenames.
+    """
     groups = {"A": [], "L": [], "R": [], "S": [], "T": [], "W": []}
 
     for f in os.listdir(path):
@@ -319,6 +445,18 @@ def get_fingerprint_groups(path="data/png/"):
 
 
 def get_group_thresholding_score(threshold, scores, names1, names2):
+    """
+    Compute the accuracy and F1 score given a matching threshold for a group of fingerprints.
+
+    Parameters:
+    threshold (int): The score threshold above which two fingerprints are considered a match.
+    scores (list): A list of matching scores.
+    names1 (list): A list of names for the fingerprints in the first group.
+    names2 (list): A list of names for the fingerprints in the second group.
+
+    Returns:
+    tuple: A tuple containing the accuracy and F1 score.
+    """
     truths, preds = [], []
     for score, name1, name2 in zip(scores, names1, names2):
         if name1 == name2:
@@ -346,6 +484,14 @@ def get_group_thresholding_score(threshold, scores, names1, names2):
 
 def task_1():
     # Plot scores
+    """
+    Plot bozorth3 matching points for impostors and genuines on the same plot.
+
+    The plot is a comparison of the bozorth3 matching points for impostors and genuines. The
+    x-axis represents the subject pairs (sorted alphabetically) and the y-axis represents the
+    number of matching points. The red line represents the impostors and the blue line represents
+    the genuines.
+    """
     impostors, genuine, original = get_scores("data/matches/")
     imp, imp_s = impostors
     gen, gen_s = genuine
@@ -355,6 +501,10 @@ def task_1():
 
 def task_2():
     # Plot similarity matrix
+    """
+    Plot a similarity matrix from the matching scores of the fingerprint comparison.
+    """
+    
     impostors, genuine, original = get_scores("data/matches/")
     original_scores, original_names = original
 
@@ -363,18 +513,25 @@ def task_2():
 
 
 def task_3():
+    """
+    Retrieve and plot the NFIQ scores for fingerprint images.
+    """
     get_and_plot_nfiq_scores()
 
 
 def task_4():
-    # Determine best threshold + classification
+    """
+    Determine the best threshold and classification based on the matching scores of fingerprints.
+
+    This function calculates the best threshold and classification by iterating through a range of thresholds
+    and computing the accuracy and F1 score for each threshold. The best threshold is the one that maximizes
+    both accuracy and F1 score. The function then prints out the best threshold, accuracy, and F1 score.
+    """
     impostors, genuine, original = get_scores("data/matches/")
 
     imp, imp_s = impostors
     gen, gen_s = genuine
     original_scores, original_names = original  # For example 1_1_vs_1_2.txt
-
-    thresh = get_threshold()
 
     max_acc, max_f1, best_thresh = 0, 0, 0
     thresholds = np.arange(45, 100, 1)
@@ -400,6 +557,15 @@ def task_5():
     # write_wsq_for_pcasys("data/png", "wsq")
 
     # Get groups
+    """
+    Determine the best threshold and classification for each group of fingerprints.
+
+    This function iterates through the fingerprints in each group and computes the
+    accuracy and F1 score for each threshold. The best threshold is the one that
+    maximizes both accuracy and F1 score. The function then prints out the best
+    threshold, accuracy, and F1 score for each group. The final threshold,
+    accuracy, and F1 score are also computed by averaging over all the groups.
+    """
     groups = get_fingerprint_groups()
 
     # Get scores
@@ -535,3 +701,4 @@ if __name__ == "__main__":
         task_4()
 
         task_5()
+
